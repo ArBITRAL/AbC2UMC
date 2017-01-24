@@ -1,0 +1,2 @@
+X := a.X + b.nil
+SYS ::= X

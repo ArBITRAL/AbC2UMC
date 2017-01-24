@@ -1,0 +1,5 @@
+W := ($x = _propose and id = 1)($x,$y).(W1+W2)
+W1 := (_no)@(id = this.id and color = _red).nil
+W2 := ($y)@(id = this.id).nil
+
+SYS ::= W

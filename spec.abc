@@ -1,0 +1,10 @@
+component Foo
+	  attributes: id
+	  behaviour:
+		let {
+		    P := (1)@(tt).P + (2)@(tt).nil
+		   }
+	        in P
+end
+C0 : Foo
+SYS ::= C0
