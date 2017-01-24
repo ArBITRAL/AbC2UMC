@@ -91,7 +91,7 @@ run([], PcList) ->
     LineSep = io_lib:nl(),
     Pc = build_pc_list(PcList),
     Token = get(token),
-    TokenDef = if Token =/= [] ->
+    TokenDef = if Token =/= #{} ->
 		       string:join(maps:keys(Token), ", ") ++ " : Token; \n\n";
 		  true -> ""
 	       end,
@@ -143,7 +143,9 @@ run([{comp_call, Name, _} | Rest], PcList) ->
     Boundname = "bound"++"["++integer_to_list(I)++"]",
     %% main process index and counter
     %% force using Component name as process name in the begining
-    Process = #{code_def => CName, parent => [], rec => {}, g_index => I, v_name => [], aware => [], update => [], b_name => Boundname, pc_name => Pcname, pc_index => 0, pc_value => 1},
+
+    %% Note that bound index is different from Pc index, they increase value differently
+    Process = #{code_def => CName, parent => [], rec => {}, g_index => I, v_name => [], aware => [], update => [], b_name => Boundname, bound_index => 0, pc_name => Pcname, pc_index => 0, pc_value => 1},
     %% there is no parent in the first time
     ets:insert(State,{state,Process}),
     Print = "\n\n ---------- COMPONENT " ++ atom_to_list(Name) ++ " ------------ \n\n",
@@ -181,8 +183,8 @@ eval({call, Name, _}, State, {_, Evalue} = Entry) ->
 
 eval({p_awareness,Pred,Process},State,Entry) ->
     M = ets:lookup_element(State,state,2),
-    #{aware := PAware, v_name := Vars, g_index := I, b_name := Boundname, pc_index := PIndex} = M,
-    Bound = Boundname ++ "[" ++ integer_to_list(PIndex) ++ "]",
+    #{aware := PAware, v_name := Vars, g_index := I, b_name := Boundname, bound_index := BIndex, pc_index := PIndex} = M,
+    Bound = Boundname ++ "[" ++ integer_to_list(BIndex) ++ "]",
     P = build_pred(local, Pred, I, Vars, Bound),
     ets:insert(State,{state,M#{aware => [P|PAware]}}),
     %%print(P),
@@ -190,8 +192,8 @@ eval({p_awareness,Pred,Process},State,Entry) ->
 
 eval({p_update,Assingments,Process},State,Entry) ->
     M = ets:lookup_element(State,state,2),
-    #{update := Upd, v_name := Vars, g_index := I, b_name := Boundname, pc_index := PIndex} = M,
-    Bound = Boundname ++ "[" ++ integer_to_list(PIndex) ++ "]",
+    #{update := Upd, v_name := Vars, g_index := I, b_name := Boundname, bound_index := BIndex, pc_index := PIndex} = M,
+    Bound = Boundname ++ "[" ++ integer_to_list(BIndex) ++ "]",
     A = build_assign(Assingments, I, Vars, Bound),
     ets:insert(State,{state,M#{update => Upd ++ A}}),
     eval(Process, State, Entry);
@@ -228,6 +230,7 @@ eval({par, Left, Right}, State, {_, 1} = Entry) -> % spawn process with no prefi
     NumProcs = ets:lookup_element(Root,num_procs,2),
 
     Map = ets:lookup_element(State,state,2),
+    #{bound_index := BIndex}  =  Map,
 
     P2 = NumProcs,
 
@@ -241,7 +244,7 @@ eval({par, Left, Right}, State, {_, 1} = Entry) -> % spawn process with no prefi
 
     State2 = ets:new(list_to_atom(Child2),[]),
 
-    Process2 = Map#{pc_index := P2, pc_value := 1},
+    Process2 = Map#{pc_index := P2, bound_index := BIndex + 1, pc_value := 1},
 
     ets:insert(State2, {state, Process2}),
     ets:insert(State2, {parents, Parents}),
@@ -256,12 +259,16 @@ eval({par, Left, Right}, State, {Parent, _Value}) ->
     NumProcs = ets:lookup_element(Root,num_procs,2),
 
     Map = ets:lookup_element(State,state,2),
-    #{pc_name := Pcname, pc_value := Global, pc_index := PIndex}  =  Map,
+    #{pc_name := Pcname, pc_value := Global, bound_index := BIndex, pc_index := PIndex}  =  Map,
 
     P1 = NumProcs,
 
     P2 = P1 + 1,
 
+    print("BOUND INDEX LEFT"),
+    print(BIndex),
+    print("BOUND INDEX RIGHT"),
+    print(BIndex + 1),
     ets:insert(Root, {num_procs, P2 + 1}),
 
     ParentName = proplists:get_value(name,ets:info(State)),
@@ -273,8 +280,8 @@ eval({par, Left, Right}, State, {Parent, _Value}) ->
     State1 = ets:new(list_to_atom(Child1),[]),
     State2 = ets:new(list_to_atom(Child2),[]),
 
-    Process1 = Map#{pc_index := P1, pc_value := 1},
-    Process2 = Map#{pc_index := P2, pc_value := 1},
+    Process1 = Map#{pc_index := P1, bound_index := BIndex, pc_value := 1},
+    Process2 = Map#{pc_index := P2, bound_index := BIndex + 1, pc_value := 1},
     ets:insert(State1, {state, Process1}),
     ets:insert(State1, {parents, Parents}),
     ets:insert(State2, {state, Process2}),
@@ -317,14 +324,14 @@ eval(Act, State, Entry) ->
 
 create_trans({output, Exps, Pred}, State, {Parent, Value}) ->
     Map = ets:lookup_element(State,state,2),
-    #{update := Upd, aware := Aware, rec := Rec, g_index := SIndex, v_name := Vars, pc_name := Pcname, pc_value := Global, pc_index := PIndex, b_name := Boundname}  =  Map,
+    #{update := Upd, aware := Aware, rec := Rec, g_index := SIndex, v_name := Vars, pc_name := Pcname, pc_value := Global, pc_index := PIndex, bound_index := BIndex, b_name := Boundname}  =  Map,
 
     Assigns = if Upd == [] -> ""; true -> "\t" ++ string:join(Upd,";\n\t") ++ ";\n" end,
     PAware = if Aware == [] -> ""; true -> string:join(Aware," and ") ++ " and " end,
 
     Cond1 = build_pc_guard({Parent, {Pcname, PIndex, Value}}),
 
-    Bound = Boundname ++ "[" ++ integer_to_list(PIndex) ++ "]",
+    Bound = Boundname ++ "[" ++ integer_to_list(BIndex) ++ "]",
     Cname = get(root),
     Sname = atom_to_list(Cname)++".s"++integer_to_list(SIndex),
 
@@ -374,14 +381,14 @@ create_trans({input, Pred, Vars}, State, {Parent, Value}) ->
     Vars1 = lists:zip(Vars,VIndex),
 
     Map = ets:lookup_element(State,state,2),
-    #{update := Upd, aware := Aware, rec := Rec, g_index := SIndex, b_name := Boundname, pc_name := Pcname, pc_value := Global, pc_index := PIndex}  =  Map,
+    #{update := Upd, aware := Aware, rec := Rec, g_index := SIndex, b_name := Boundname, bound_index := BIndex, pc_name := Pcname, pc_value := Global, pc_index := PIndex}  =  Map,
 
     Assigns = if Upd == [] -> ""; true -> "\t" ++ string:join(Upd,";\n") ++ ";\n\t" end,
     PAware = if Aware == [] -> ""; true -> string:join(Aware," and ") ++ " and " end,
 
     Cond = build_pc_guard({Parent, {Pcname, PIndex, Value}}),
 
-    Bound = Boundname ++ "[" ++ integer_to_list(PIndex) ++ "]",
+    Bound = Boundname ++ "[" ++ integer_to_list(BIndex) ++ "]",
     Received = "OUT.received("++ integer_to_list(SIndex) ++ ",msg);\n\t",
     Cname = get(root),
     Sname = atom_to_list(Cname)++".s"++integer_to_list(SIndex),

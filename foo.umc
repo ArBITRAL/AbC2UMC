@@ -9,10 +9,7 @@ Vars:
 	pc :int[];
 	bound : obj[];
 	-- attributes
-	ex;
 	id;
-	partner;
-	prefs;
 State Top Defers allowsend(i)
 Transitions:
 	init -> SYS { -/
@@ -27,14 +24,12 @@ Transitions:
  ----- Send ----- 
 SYS.C0.s0 -> C0.s0 {
 	allowsend(i)[receiving = false and i = 0 and pc[0][0] = 1]/
-	partner[0] := prefs[0].head;
-	prefs[0] := prefs[0].tail;
 	for j in 0..pc.length-1 {
-		if (id[j] = partner[0]) then 
+		if (id[j] = 1) then 
 			{target[j]:=1;} else {target[j]:=0;}
 	};
 	receiving=true;
-	self.broadcast(target,[propose,id[0]],0);
+	self.broadcast(target,[3],0);
 	pc[0][0] = 2;
 }
 SYS.C0.s0 -> C0.s0 {
@@ -44,245 +39,30 @@ SYS.C0.s0 -> C0.s0 {
 	pc[0][0] = 3;
 }
  
- ----- Receive ----- 
+ ----- Send ----- 
 SYS.C0.s0 -> C0.s0 {
-	broadcast(tgt,msg,j)[tgt[0] = 1 and (msg[0] = no) and pc[0][0] = 3]/
-	OUT.received(0,msg);
-	bound[0][0] = msg;
+	allowsend(i)[receiving = false and i = 0 and pc[0][1] = 1]/
+	for j in 0..pc.length-1 {
+		if (id[j] = 2) then 
+			{target[j]:=1;} else {target[j]:=0;}
+	};
+	receiving=true;
+	self.broadcast(target,[2],0);
+	pc[0][1] = 2;
+}
+SYS.C0.s0 -> C0.s0 {
+	broadcast(tgt,msg,j)[pc[0][1] = 2]/
+	receiving=false;
+	self.allowsend(0);
+	pc[0][1] = 1;
 	pc[0][0] = 1;
-}
-
-
- ---------- COMPONENT C1 ------------ 
-
- 
- ----- Send ----- 
-SYS.C1.s1 -> C1.s1 {
-	allowsend(i)[receiving = false and i = 1 and pc[1][0] = 1]/
-	partner[1] := prefs[1].head;
-	prefs[1] := prefs[1].tail;
-	for j in 0..pc.length-1 {
-		if (id[j] = partner[1]) then 
-			{target[j]:=1;} else {target[j]:=0;}
-	};
-	receiving=true;
-	self.broadcast(target,[propose,id[1]],1);
-	pc[1][0] = 2;
-}
-SYS.C1.s1 -> C1.s1 {
-	broadcast(tgt,msg,j)[pc[1][0] = 2]/
-	receiving=false;
-	self.allowsend(1);
-	pc[1][0] = 3;
-}
- 
- ----- Receive ----- 
-SYS.C1.s1 -> C1.s1 {
-	broadcast(tgt,msg,j)[tgt[1] = 1 and (msg[0] = no) and pc[1][0] = 3]/
-	OUT.received(1,msg);
-	bound[1][0] = msg;
-	pc[1][0] = 1;
-}
-
-
- ---------- COMPONENT C2 ------------ 
-
- 
- ----- Receive ----- 
-SYS.C2.s2 -> C2.s2 {
-	broadcast(tgt,msg,j)[tgt[2] = 1 and (msg[0] = propose) and pc[2][0] = 1]/
-	OUT.received(2,msg);
-	bound[2][0] = msg;
-	pc[2][0] = 2;
-}
- 
- ----- Send ----- 
-SYS.C2.s2 -> C2.s2 {
-	allowsend(i)[receiving = false and i = 2 and (prefs[2][partner[2]] < prefs[2][bound[2][0][1]]) and pc[2][0] = 2]/
-	ex[2] := partner[2];
-	partner[2] := bound[2][0][1];
-	for j in 0..pc.length-1 {
-		if (id[j] = ex[2]) then 
-			{target[j]:=1;} else {target[j]:=0;}
-	};
-	receiving=true;
-	self.broadcast(target,[no],2);
-	pc[2][0] = 3;
-}
-SYS.C2.s2 -> C2.s2 {
-	broadcast(tgt,msg,j)[pc[2][0] = 3]/
-	receiving=false;
-	self.allowsend(2);
-	pc[2][0] = 4;
-}
- 
- ----- Send ----- 
-SYS.C2.s2 -> C2.s2 {
-	allowsend(i)[receiving = false and i = 2 and (prefs[2][partner[2]] > prefs[2][bound[2][0][1]]) and pc[2][0] = 2]/
-	for j in 0..pc.length-1 {
-		if (id[j] = bound[2][0][1]) then 
-			{target[j]:=1;} else {target[j]:=0;}
-	};
-	receiving=true;
-	self.broadcast(target,[no],2);
-	pc[2][0] = 5;
-}
-SYS.C2.s2 -> C2.s2 {
-	broadcast(tgt,msg,j)[pc[2][0] = 5]/
-	receiving=false;
-	self.allowsend(2);
-	pc[2][0] = 6;
-}
- 
- ----- Receive ----- 
-SYS.C2.s2 -> C2.s2 {
-	broadcast(tgt,msg,j)[tgt[2] = 1 and (msg[0] = propose) and pc[2][1] = 1]/
-	OUT.received(2,msg);
-	bound[2][1] = msg;
-	pc[2][1] = 2;
-}
- 
- ----- Send ----- 
-SYS.C2.s2 -> C2.s2 {
-	allowsend(i)[receiving = false and i = 2 and (prefs[2][partner[2]] < prefs[2][bound[2][1][1]]) and pc[2][1] = 2]/
-	ex[2] := partner[2];
-	partner[2] := bound[2][1][1];
-	for j in 0..pc.length-1 {
-		if (id[j] = ex[2]) then 
-			{target[j]:=1;} else {target[j]:=0;}
-	};
-	receiving=true;
-	self.broadcast(target,[no],2);
-	pc[2][1] = 3;
-}
-SYS.C2.s2 -> C2.s2 {
-	broadcast(tgt,msg,j)[pc[2][1] = 3]/
-	receiving=false;
-	self.allowsend(2);
-	pc[2][1] = 4;
-}
- 
- ----- Send ----- 
-SYS.C2.s2 -> C2.s2 {
-	allowsend(i)[receiving = false and i = 2 and (prefs[2][partner[2]] > prefs[2][bound[2][1][1]]) and pc[2][1] = 2]/
-	for j in 0..pc.length-1 {
-		if (id[j] = bound[2][1][1]) then 
-			{target[j]:=1;} else {target[j]:=0;}
-	};
-	receiving=true;
-	self.broadcast(target,[no],2);
-	pc[2][1] = 5;
-}
-SYS.C2.s2 -> C2.s2 {
-	broadcast(tgt,msg,j)[pc[2][1] = 5]/
-	receiving=false;
-	self.allowsend(2);
-	pc[2][1] = 6;
-}
-
-
- ---------- COMPONENT C3 ------------ 
-
- 
- ----- Receive ----- 
-SYS.C3.s3 -> C3.s3 {
-	broadcast(tgt,msg,j)[tgt[3] = 1 and (msg[0] = propose) and pc[3][0] = 1]/
-	OUT.received(3,msg);
-	bound[3][0] = msg;
-	pc[3][0] = 2;
-}
- 
- ----- Send ----- 
-SYS.C3.s3 -> C3.s3 {
-	allowsend(i)[receiving = false and i = 3 and (prefs[3][partner[3]] < prefs[3][bound[3][0][1]]) and pc[3][0] = 2]/
-	ex[3] := partner[3];
-	partner[3] := bound[3][0][1];
-	for j in 0..pc.length-1 {
-		if (id[j] = ex[3]) then 
-			{target[j]:=1;} else {target[j]:=0;}
-	};
-	receiving=true;
-	self.broadcast(target,[no],3);
-	pc[3][0] = 3;
-}
-SYS.C3.s3 -> C3.s3 {
-	broadcast(tgt,msg,j)[pc[3][0] = 3]/
-	receiving=false;
-	self.allowsend(3);
-	pc[3][0] = 4;
-}
- 
- ----- Send ----- 
-SYS.C3.s3 -> C3.s3 {
-	allowsend(i)[receiving = false and i = 3 and (prefs[3][partner[3]] > prefs[3][bound[3][0][1]]) and pc[3][0] = 2]/
-	for j in 0..pc.length-1 {
-		if (id[j] = bound[3][0][1]) then 
-			{target[j]:=1;} else {target[j]:=0;}
-	};
-	receiving=true;
-	self.broadcast(target,[no],3);
-	pc[3][0] = 5;
-}
-SYS.C3.s3 -> C3.s3 {
-	broadcast(tgt,msg,j)[pc[3][0] = 5]/
-	receiving=false;
-	self.allowsend(3);
-	pc[3][0] = 6;
-}
- 
- ----- Receive ----- 
-SYS.C3.s3 -> C3.s3 {
-	broadcast(tgt,msg,j)[tgt[3] = 1 and (msg[0] = propose) and pc[3][1] = 1]/
-	OUT.received(3,msg);
-	bound[3][1] = msg;
-	pc[3][1] = 2;
-}
- 
- ----- Send ----- 
-SYS.C3.s3 -> C3.s3 {
-	allowsend(i)[receiving = false and i = 3 and (prefs[3][partner[3]] < prefs[3][bound[3][1][1]]) and pc[3][1] = 2]/
-	ex[3] := partner[3];
-	partner[3] := bound[3][1][1];
-	for j in 0..pc.length-1 {
-		if (id[j] = ex[3]) then 
-			{target[j]:=1;} else {target[j]:=0;}
-	};
-	receiving=true;
-	self.broadcast(target,[no],3);
-	pc[3][1] = 3;
-}
-SYS.C3.s3 -> C3.s3 {
-	broadcast(tgt,msg,j)[pc[3][1] = 3]/
-	receiving=false;
-	self.allowsend(3);
-	pc[3][1] = 4;
-}
- 
- ----- Send ----- 
-SYS.C3.s3 -> C3.s3 {
-	allowsend(i)[receiving = false and i = 3 and (prefs[3][partner[3]] > prefs[3][bound[3][1][1]]) and pc[3][1] = 2]/
-	for j in 0..pc.length-1 {
-		if (id[j] = bound[3][1][1]) then 
-			{target[j]:=1;} else {target[j]:=0;}
-	};
-	receiving=true;
-	self.broadcast(target,[no],3);
-	pc[3][1] = 5;
-}
-SYS.C3.s3 -> C3.s3 {
-	broadcast(tgt,msg,j)[pc[3][1] = 5]/
-	receiving=false;
-	self.allowsend(3);
-	pc[3][1] = 6;
 }
 end System;
 
 
-OO : System (id -> [1,2,3,4], prefs -> [[3,4],[3,4],[0,2,1],[0,2,1]], pc => [[1],[1],[1,1],[1,1]]);
+OO : System (pc => [[1,1]]);
 Abstractions {
     Action broadcast($1,$2,$3) -> send($1,$2)
     Action received($1,$2) -> received($1,$2)
 }
-
-no, propose : Token; 
 

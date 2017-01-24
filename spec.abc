@@ -2,9 +2,7 @@ component Foo
 	  attributes: id
 	  behaviour:
 		let {
-		    P := (1)@(tt).(Q |^2 P)
-		    Q := (3)@(tt).nil
-		    K := (1)@(tt).Q
+		    P := (3)@(id = 1).nil | (2)@(id=2).P
 		   }
 	        in P
 end
