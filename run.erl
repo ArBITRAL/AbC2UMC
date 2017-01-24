@@ -44,11 +44,11 @@ string(String) when is_list(String) ->
     ets:insert(system, {attributes, #{}}),
     [Sys] = [Y || {sys,Y} <- Tree],
     %% storing AbC components definitions into State and init
-    lists:map(fun({I1,{comp,Name,[{attributes, Att_List}, {behaviour, Behaviour, Init}]}}) ->
-		      ets:new(Name,[named_table]),
-		      ets:insert(Name,Init),
+    lists:map(fun({I1,{comp,CName,[{attributes, Att_List}, {behaviour, Behaviour, Init}]}}) ->
+		      ets:new(CName,[named_table]),
+		      ets:insert(CName,Init),
 		      lists:map(fun({def,Proc,Args,Code}) ->
-					ets:insert(Name,{Proc,{proc,Args,Code}})
+					ets:insert(CName,{Proc,{proc,Args,Code}})
 				end, Behaviour),
 
 		      %% Create the attributes list from component definitions
@@ -64,8 +64,8 @@ string(String) when is_list(String) ->
 		      ets:insert(system, {attributes, Map})
 		      end, Comps),
     Att = ets:lookup_element(system, attributes, 2),
-    Data = lists:foldl(fun({comp_init,Name,{comp,_,Decl}=Body},Acc) ->
-			ets:insert(system,{Name,Body}),
+    Data = lists:foldl(fun({comp_init,CInit,{comp,_,Decl}=Body},Acc) ->
+			ets:insert(system,{CInit,Body}),
 			[Decl | Acc]
 		end, [], Comp_inits),
     print(Data),
@@ -91,7 +91,7 @@ run([], PcList) ->
     LineSep = io_lib:nl(),
     Pc = build_pc_list(PcList),
     Token = get(token),
-    TokenDef = if Token == [] ->
+    TokenDef = if Token =/= [] ->
 		       string:join(maps:keys(Token), ", ") ++ " : Token; \n\n";
 		  true -> ""
 	       end,
@@ -124,6 +124,7 @@ run([], PcList) ->
 
 run([{comp_call, Name, _} | Rest], PcList) ->
     {comp, CName, _Data}  = ets:lookup_element(system,Name,2),
+    %% get behaviour of component, which is a process name
     Behaviour = ets:lookup_element(CName,init,2),
     State = ets:new(Name,[named_table]),
     catch ets:delete(procs_info),
@@ -140,9 +141,10 @@ run([{comp_call, Name, _} | Rest], PcList) ->
     ets:insert(State,{num_procs,1}),
     Pcname = "pc"++"["++integer_to_list(I)++"]",
     Boundname = "bound"++"["++integer_to_list(I)++"]",
-    % main process index and counter
-    Process = #{code_def => CName, parent => [], rec => {Pcname,0,0}, g_index => I, v_name => [], aware => [], update => [], b_name => Boundname, pc_name => Pcname, pc_index => 0, pc_value => 1},
-    % there is no parent in the first time
+    %% main process index and counter
+    %% force using Component name as process name in the begining
+    Process = #{code_def => CName, parent => [], rec => {}, g_index => I, v_name => [], aware => [], update => [], b_name => Boundname, pc_name => Pcname, pc_index => 0, pc_value => 1},
+    %% there is no parent in the first time
     ets:insert(State,{state,Process}),
     Print = "\n\n ---------- COMPONENT " ++ atom_to_list(Name) ++ " ------------ \n\n",
     file:write_file("foo.umc", Print, [append]),
@@ -160,6 +162,7 @@ call(Code, State) ->
 call({proc, _ArgNames, Code}, State, Entry) ->
     eval(Code, State, Entry).
 
+%% call to this function whenever there is a process call
 eval({call, Name, _}, State, {_, Evalue} = Entry) ->
     M = ets:lookup_element(State, state, 2),
     #{code_def := Def, pc_name := Pcname, pc_index := I} = M,
@@ -168,10 +171,12 @@ eval({call, Name, _}, State, {_, Evalue} = Entry) ->
     Pc = Pcname ++ "[" ++ integer_to_list(I) ++ "]",
     P = ets:lookup_element(State,parents,2),
     %% Store information of the process
-    ets:insert(procs_info, {Name, {Pc, I, Evalue}}),
+    ets:insert(procs_info, {Name, {Name, Pc, I, Evalue}}),
     %%print(Name),
     ets:insert(State,{parents,[Name | P]}),
-    %%ets:insert(State,{state,M#{rec => {Pc,Evalue}}}),
+    %% update proc_name - which is the name of the current process  that executes code
+    %%ets:insert(State,{state,M#{proc_name => Name, rec => {Pc,I,Evalue}}}),
+    ets:insert(State,{state,M#{proc_name => Name}}),
     call(Code, State, Entry);
 
 eval({p_awareness,Pred,Process},State,Entry) ->
@@ -333,16 +338,30 @@ create_trans({output, Exps, Pred}, State, {Parent, Value}) ->
     Actions1 = Target ++ Output ++ Pc ++ " = " ++ integer_to_list(Global + 1) ++ ";\n}\n",
 
     Guards2 = "\tbroadcast(tgt,msg,j)[" ++ Pc ++ " = " ++ integer_to_list(Global + 1) ++ "]/\n",
-
-    RecString = case Rec of
-		    {_, _, 0} -> integer_to_list(Global+2); % no process call
-		    {Pc, _,  _} -> "1";  % recursion
-		    {Mypc, MyIndex, MyVal} -> if MyIndex < PIndex -> "1"; true -> integer_to_list(Global+2) end ++ ";\n\t" ++ Mypc ++ " = " ++ integer_to_list(MyVal)
+    print("DEtermine REC"),
+    print(Rec),
+    print(Global),
+    {RecString,RecVal} = case Rec of
+		    {} -> {integer_to_list(Global+2),Global+2}; % no process call or nil process
+		    {SomeName, Pc, PIndex, MyVal} ->
+			#{proc_name := Proc_Name} = Map,
+			if SomeName == Proc_Name -> {"1",Global+1};
+			   true ->  {integer_to_list(MyVal),Global+1}
+			   %integer_to_list(Global+2)
+			end;
+		    {SomeName, Pc, PIndex, MyVal} ->
+			#{proc_name := Proc_Name} = Map,
+			if SomeName == Proc_Name -> {"1",Global+1};
+			   true ->  {integer_to_list(MyVal),Global+1}
+			   %integer_to_list(Global+2)
+			end;
+		    {_Somename,Mypc, MyIndex, MyVal} -> if MyIndex < PIndex -> {"1" ++ ";\n\t" ++ Mypc ++ " = " ++  integer_to_list(MyVal),Global+1}; true -> {integer_to_list(Global+2),Global+2} end
+		    %%{Mypc, MyIndex, MyVal} -> if MyIndex < PIndex -> "1"; true -> integer_to_list(Global+2) end ++ ";\n\t" ++ Mypc ++ " = " ++ integer_to_list(MyVal)
 		end,
     Actions2 = "\treceiving=false;\n\tself.allowsend(" ++ integer_to_list(SIndex) ++ ");\n\t"
 	++ Pc ++ " = "
 	++ RecString ++ ";\n}\n",
-    NewMap = Map#{rec => {Pc,0,0}, pc_value => Global + 2, aware => [], update => []},
+    NewMap = Map#{rec => {}, pc_value => RecVal, aware => [], update => []},
     ets:insert(State, {state, NewMap}),
 
     Signal = " \n ----- Send ----- \n",
@@ -375,14 +394,32 @@ create_trans({input, Pred, Vars}, State, {Parent, Value}) ->
 
     Pc = Pcname ++ "[" ++ integer_to_list(PIndex) ++ "]",
     RecString = case Rec of
-		    {_, _, 0} -> integer_to_list(Global+1);
-		    {Pc, _, _} -> "1";
-		    {Mypc, MyIndex, MyVal} -> if MyIndex < PIndex -> "1"; true -> integer_to_list(Global+1) end ++ ";\n\t" ++ Mypc ++ " = " ++ integer_to_list(MyVal)
+		    {} -> integer_to_list(Global+1); % no process call or nil process
+		    {SomeName, Pc, PIndex, MyVal} ->
+			#{proc_name := Proc_Name} = Map,
+			if SomeName == Proc_Name -> "1";
+			   true ->  integer_to_list(MyVal)
+			   %integer_to_list(Global+2)
+			end;
+		    {SomeName, Pc, PIndex, MyVal} ->
+			#{proc_name := Proc_Name} = Map,
+			if SomeName == Proc_Name -> "1";
+			   true ->  integer_to_list(MyVal)
+			   %integer_to_list(Global+2)
+			end;
+		    {_Somename,Mypc, MyIndex, MyVal} -> if MyIndex < PIndex -> "1" ++ ";\n\t" ++ Mypc ++ " = " ++  integer_to_list(MyVal); true -> integer_to_list(Global+1) end
 		end,
+
+    %% RecString = case Rec of
+    %% 		    {_, _, 0} -> integer_to_list(Global+1);
+    %% 		    {Pc, _, 1} -> "1";
+    %% 		    {Pc, _, _} -> integer_to_list(Global+1);
+    %% 		    {Mypc, MyIndex, MyVal} -> if MyIndex < PIndex -> "1" ++ ";\n\t" ++ Mypc ++ " = " ++ integer_to_list(MyVal); true -> integer_to_list(Global+1) end
+    %% 		end,
     Actions = Received ++ Bound ++ " = msg;\n\t" ++ Pc ++ " = " ++ RecString ++ ";\n}\n",
     Signal = " \n ----- Receive ----- \n",
     Print = [Signal,Trans,Guards, Assigns,Actions],
-    NewMap =  Map#{rec => {Pc,0}, v_name => Vars1, pc_value => Global + 1, aware => [], update => []},
+    NewMap =  Map#{rec => {}, v_name => Vars1, pc_value => Global + 1, aware => [], update => []},
     ets:insert(State, {state, NewMap}),
     file:write_file("foo.umc", Print, [append]).
 

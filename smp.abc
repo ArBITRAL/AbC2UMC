@@ -1,0 +1,29 @@
+component M
+	  attributes: id, partner, prefs
+	  behaviour:
+		let {
+		    Man := [this.partner := this.prefs.head, this.prefs := this.prefs.tail]M0
+		    M0 :=(_propose, this.id)@(id = this.partner).M1
+		    M1 := ($x = _no)($x).Man
+		   }
+	        in Man
+end
+
+component W
+	  attributes: id, partner, ex, prefs
+	  behaviour:
+		let {
+		    Woman := ($x = _propose)($x, $y).W |^1 Woman
+		    W := W1 + W2
+		    W1 := <this.prefs[this.partner] < this.prefs[$y]>[this.ex := this.partner,this.partner := $y](_no)@(id = this.ex).nil
+		    W2 := <this.prefs[this.partner] > this.prefs[$y]>(_no)@(id = $y).nil
+		   }
+	        in Woman
+end
+
+C0 : M (id -> 1, prefs -> [3,4])
+C1 : M (id -> 2, prefs -> [3,4])
+C2 : W (id -> 3, prefs -> [0,2,1])
+C3 : W (id -> 4, prefs -> [0,2,1])
+
+SYS ::= C0 || C1 || C2 || C3
