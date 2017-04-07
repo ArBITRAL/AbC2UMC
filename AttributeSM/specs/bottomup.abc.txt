@@ -1,0 +1,167 @@
+-- Attribute SM - bottom-up approach
+-- Men first proose with one preference, then increases to two preferences
+
+component M
+ attributes: id, partner, wealth, body, pe, ph, ce, ch, msgqueue
+ behaviour:
+   let {
+     Man :=   WAIT_REPLIES | HANDLE_PROPOSALS
+
+     WAIT_REPLIES := ($msg = _yes)($msg,$id,$eyes,$hair).RECEIVE($msg,$id,$eyes,$hair)
+     RECEIVE(x,y,z,t) := ([this.msgqueue := this.msgqueue+[[$x,$y,$z,$t]]]($msg = _yes)($msg,$id,$eyes,$hair).RECEIVE($msg,$id,$eyes,$hair))
+     		      +
+			([this.msgqueue := this.msgqueue+[[$x,$y,$z,$t]]]()@(ff).WAIT_REPLIES)
+
+     HANDLE_PROPOSALS :=
+     --  initially this.partner = 0
+     --  start with proposing with low expectations (eyes matching)
+     --  (no _bye msg can arrive at this time)
+       (_propose,this.id,this.wealth,this.body)@(eyes = this.pe).HANDLE_FIRST_REPLIES
+
+     HANDLE_FIRST_REPLIES :=
+       -- accept current partner even if not best
+     	     (<this.msgqueue <> [] and this.partner = 0>
+                [this.partner:= this.msgqueue.head[1],
+                 this.ce := this.msgqueue.head[2],
+                  this.ch := this.msgqueue.head[3],
+                 this.msgqueue := this.msgqueue.tail]
+                 (_confirm,this.id,this.wealth,this.body)@(id = this.partner).HANDLE_FIRST_REPLIES)
+		      	     +
+          -- if a better match is also arrived prepare send bye and swap
+            (<this.msgqueue <> [] and this.partner <> 0 and
+	       (this.msgqueue.head[3] = this.ph and this.ch <> this.ph)>
+              [$ex := this.partner,this.partner := 0,this.ce := 0, this.ch := 0](_bye,this.id)@(id = $ex).HANDLE_SECOND_REPLIES)
+            +
+          -- notify toolate for delayed replies (not better then current match)
+            (<this.msgqueue <> [] and this.partner <> 0 and (this.msgqueue.head[3] <> this.ph or this.ch = this.ph)>
+           [$temp := this.msgqueue, this.msgqueue := this.msgqueue.tail](_toolate, this.id)@(id = $temp.head[1]).HANDLE_FIRST_REPLIES)
+		             +
+          -- if abandoned by current partner, but queue not empty continue
+           (<this.msgqueue <> []>
+           [$ex := this.partner, this.partner := 0,this.ce := 0, this.ch := 0]($msg = _bye and $id=$ex)($msg,$id).HANDLE_FIRST_REPLIES)
+		            +
+         -- if abandoned by current partner, and empty queue restart with low expectations
+              (<this.msgqueue = []>
+                [$ex := this.partner, this.partner := 0, this.ce := 0, this.ch := 0]($msg = _bye and $id=$ex)($msg,$id).
+              (_propose, this.id,this.wealth,this.body)@(eyes = this.pe).
+                 HANDLE_FIRST_REPLIES)
+		            +
+          -- if empty queue but not best make better proposal
+           (<this.msgqueue = [] and this.partner <> 0 and this.ch <> this.ph>
+              (_propose,this.id,this.wealth,this.body)@(eyes = this.pe and hair = this.ph).
+                 HANDLE_SECOND_REPLIES)
+
+     HANDLE_SECOND_REPLIES :=
+      -- accept current partner (just swapped, is surely the best)
+     	     (<this.msgqueue <> [] and
+     	       this.partner = 0 >
+                [this.partner:= this.msgqueue.head[1],
+                 this.ce := this.msgqueue.head[2],
+		 this.ch := this.msgqueue.head[3],
+                 this.msgqueue := this.msgqueue.tail]
+                 (_confirm, this.id,this.wealth,this.body)@(id = this.partner).HANDLE_SECOND_REPLIES)
+	      	     +
+           -- notify toolate for all other queued replies (cannot be better)
+            (<this.msgqueue <> [] and this.partner <> 0 and (this.msgqueue.head[3] <> this.ph
+                 or this.ch = this.ph)>[$temp:=this.msgqueue, this.msgqueue := this.msgqueue.tail](_toolate, this.id)@(id = $temp.head[1]).HANDLE_SECOND_REPLIES)
+		 +
+           -- receive first reply of this stronger requirment, bye ex "lower" partner
+	    (<this.msgqueue <> [] and
+                this.partner <> 0 and (this.ch <> this.ph and this.msgqueue.head[3] = this.ph)>
+               [$ex := this.partner,this.partner:= 0,this.ce := 0,this.ch := 0](_bye, this.id)@(id = $ex).HANDLE_SECOND_REPLIES)
+           +
+           -- if abandoned by current partner, and empty queue
+           --   restart with low expectations
+            (<this.msgqueue <> []>[$ex:=this.partner,this.partner := 0, this.ce := 0, this.ch := 0]($msg = _bye and $id= $ex)($msg,$id).HANDLE_FIRST_REPLIES)
+           +
+           (<this.msgqueue = []>($msg = _bye and $id=this.partner)($msg,$id).
+              [this.partner := 0,this.ce := 0,this.ch := 0](_propose, this.id,this.wealth,this.body)@(eyes = this.pe).HANDLE_FIRST_REPLIES)
+   }
+   in Man
+end
+
+component W
+ attributes: id, partner, eyes, hair, pw, pb, cw, cb,  msgqueue
+ behaviour:
+   let {
+     Woman := WAIT_PROPOSALS | HANDLE_PROPOSALS
+     WAIT_PROPOSALS :=
+         ($msg = _propose)($msg,$id,$wealth,$body).RECV($msg,$id,$wealth,$body)
+	 RECV(x,y,z,t) := ([this.msgqueue := this.msgqueue+[[$x,$y,$z,$t]]]($msg = _propose)($msg,$id,$wealth,$body).RECV($msg,$id,$wealth,$body)) + ([this.msgqueue := this.msgqueue+[[$x,$y,$z,$t]]]()@(ff).WAIT_PROPOSALS)
+
+
+       HANDLE_PROPOSALS :=
+             -- accepts when being single
+            (<this.msgqueue <> [] and this.partner=0>(_yes,this.id,this.eyes,this.hair)@(id = this.msgqueue.head[1]).
+	    (
+                     ([this.partner := this.msgqueue.head[1],
+                       this.cw := this.msgqueue.head[2],
+                       this.cb := this.msgqueue.head[3],
+                       this.msgqueue := this.msgqueue.tail]($msg = _confirm)($msg,$id,$wealth,$body).HANDLE_PROPOSALS)
+                    +
+                     ([this.msgqueue := this.msgqueue.tail]($msg =_toolate)($msg,$id).HANDLE_PROPOSALS)
+            )
+	    )
+	    +
+	    -- compare two men, new man is better
+            (<this.msgqueue <> [] and this.partner <> 0 and
+               (
+                 ( this.cw <> this.pw and this.msgqueue.head[2] = this.pw)
+                 or
+                 ( this.cw = this.msgqueue.head[2] and
+                   this.cb <> this.pb and
+                   this.msgqueue.head[3] = this.pb)
+	       )
+	     >
+               (_yes, this.id,this.eyes,this.hair)@(id = this.msgqueue.head[1]).
+	       (  -- wait confirmation or toolate notice
+	          (($msg = _confirm)($msg,$id,$wealth,$body).
+		   (
+		   ([$ex := this.partner, this.partner := this.msgqueue.head[1],
+		    this.cw := this.msgqueue.head[2],
+		    this.cb := this.msgqueue.head[3],
+		    this.msgqueue := this.msgqueue.tail](_bye,this.id)@(id = $ex).HANDLE_PROPOSALS)
+		               +
+		    -- abandoned by now ex partner
+	       	   ([$temp := this.msgqueue,this.msgqueue := this.msgqueue.tail]
+ 		      ($msg = _bye and $id = $temp.head[1])($msg,$id).HANDLE_PROPOSALS)
+		   )
+		  )
+                  +
+                  ([this.msgqueue := this.msgqueue.tail]($msg =_toolate)($msg,$id).HANDLE_PROPOSALS)
+               )
+	       )
+	    +
+	    -- if the new man is not better, discard the message
+	   <this.msgqueue <> [] and this.partner <> 0 and
+               (
+                 ( this.cw = this.pw and this.msgqueue.head[2] <> this.pw)
+                 or
+                 ( this.cw = this.msgqueue.head[2] and
+                   this.pb <> this.msgqueue.head[3] and
+                   this.cb = this.pb)
+	 	or (this.cw = this.msgqueue.head[2] and this.cb = this.msgqueue.head[3])
+	       )
+	     >[this.msgqueue := this.msgqueue.tail]()@(ff).HANDLE_PROPOSALS
+          +
+	      -- abandoned by current partner, reset status and continute
+             ([$ex := this.partner, this.partner := 0,this.cw := 0,this.cb := 0]
+	     ($msg = _bye and $id = $ex)($msg,$id).HANDLE_PROPOSALS)
+     }
+   in Woman
+end
+
+
+   -- eyes amber/green 1/0
+   -- hair red/dark 1/0
+   -- wealth rich/poor 1/0
+   -- body strong/weak 1/0
+
+-- cycling in preference lists leads to infinite loops in the model
+
+C0 : M (id -> 1, partner = 0, wealth -> 1, body -> 1, pe -> 1, ph -> 1, msgqueue -> [])
+C1 : M (id -> 2, partner = 0, wealth -> 0, body -> 1, pe -> 1, ph -> 0, msgqueue -> [])
+
+
+C2 : W (id -> 3, partner = 0, eyes -> 1, hair -> 1, pw -> 0, pb -> 1, msgqueue -> [])
+C3 : W (id -> 4, partner = 0, eyes -> 1, hair -> 0, pw -> 1, pb -> 1, msgqueue -> [])
