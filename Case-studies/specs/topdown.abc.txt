@@ -1,0 +1,91 @@
+-- Attribute SM - topdown
+
+component M
+  attributes: id, partner, wealth, body, pe, ph, bl, proposed, gender
+  behaviour:
+	let {
+	  Man := PROPOSE |  WAIT |  YES
+
+	  -- propose with gradually relaxing requirement, using Pi?P1_P2
+	  -- PROPOSE is active if a single man has not yet sent proposal
+	  PROPOSE := <this.partner = 0 and this.proposed = 0>[this.proposed := 1]
+	             ((eyes = this.pe and hair = this.ph and id notin this.bl)?
+		      (_propose,this.id,this.wealth,this.body)@(eyes = this.pe and hair = this.ph and id notin this.bl).PROPOSE 		      -- propose to pe,ph
+	    	       _
+		       ((eyes = this.pe and id notin this.bl)?(_propose,this.id,this.wealth,this.body)@(eyes = this.pe and id notin this.bl).PROPOSE  -- propose to pe
+		        _
+			(_propose,this.id,this.wealth,this.body)@(gender = 0 and id notin this.bl).PROPOSE -- keep proposing
+		       )
+		     )
+
+         -- in cases of receiving no and bye messages
+	 WAIT := LOOP |^1 WAIT
+         LOOP:= ([this.partner := 0, this.proposed := 0]($msg = _bye)($msg,$id).LOOP)
+	 	     +
+		(($msg = _no)($msg,$id).[this.proposed:= 0,this.bl := this.bl + [$id]]()@(ff).LOOP)
+
+         -- in cases of receiving yes(s), either says toolate or becomes engaged
+	 YES := LOOP1 |^1 YES
+
+	 LOOP1 := ($msg = _yes)($msg,$id,$e,$h).SEND($id,$e,$h)
+	 SEND(id,e,h) :=
+	 	      (<this.partner <> 0>(_toolate,this.id)@(id = $id).LOOP1)
+		      	  +
+	              (<this.partner = 0>[this.partner := $id,this.bl := this.bl + [$id]] -- update partner and add to blacklist, i.e., will not propose again if getting a bye in future
+		      (_confirm,this.id)@(id =this.partner).LOOP1)
+     }
+     in Man
+end
+
+component W
+  attributes: id, partner, eyes, hair, pw, pb, cb, cw, bl, answer, ex, gender
+  behaviour:
+	let {
+	  Woman := LOOP |^1 Woman  --- maximum 2*(N-1) handlers in an extreme input
+
+          -- receive any propose
+          LOOP := ($msg = _propose)($msg,$id,$w,$b).(REJECT($id,$w,$b) + ACCEPT($id,$w,$b) + DISCARD($id))
+
+   	  -- do not want to consider already processed proposal
+	  DISCARD(id) := <$id in this.bl>()@(ff).LOOP
+
+          -- the new man is not better, reject
+	  REJECT(id,w,b):=
+	  	<$id notin this.bl and this.partner <> 0 and
+    	  	 (($w <> this.pw and this.cw = this.pw) or
+	    	     ($w=this.cw and $b <> this.pb and this.cb = this.pb) or
+	     	     (this.cw = $w and this.cb = $b))>
+	     	     [this.bl := this.bl + [$id]] -- add to blacklist
+		     (_no,this.id)@(id=$id).LOOP
+
+         -- the new man is better and has not been answered, answer to him
+	 ACCEPT(id,w,b) :=
+ 		<$id notin this.bl and (this.partner = 0 or
+         	($w = this.pw and this.cw <> this.pw) or
+          	($w = this.cw and $b = this.pb and this.cb <> this.pb))
+		and this.answer = 0>
+		 [this.answer := 1,this.bl := this.bl + [$id]]	-- lock other branches, add id to black list
+	  	 (_yes,this.id,this.eyes,this.hair)@(id = $id).WAIT($id,$w,$b)
+
+         -- waits for a confirm, however a toolate may come
+	 WAIT(x,w,b):=
+		([this.ex :=this.partner,this.partner := $x, this.cw := $w, this.cb := $b]
+		($msg = _confirm)($msg,$id).[this.answer := 0](_bye,this.id)@(id = this.ex).LOOP)
+             	      +
+		-- loose the man but allowing him to propose again
+                ([this.answer := 0,this.bl := this.bl - [$x]]($msg = _toolate)($msg,$id).LOOP)
+   }
+ in Woman
+end
+
+   -- eyes amber/green 1/0
+   -- hair red/dark 1/0
+   -- wealth rich/poor 1/0
+   -- body strong/weak 1/0
+
+-- 2x2
+C0 : M (id -> 1, partner = 0, wealth -> 0, body -> 0, pe -> 0, ph -> 0, proposed -> 0, gender -> 1)
+C1 : M (id -> 2, partner = 0, wealth -> 0, body -> 0, pe -> 0, ph -> 0, proposed -> 0, gender -> 1)
+
+C2 : W (id -> 3, partner = 0, ex -> 0, eyes -> 0, hair -> 0, pw -> 0, pb -> 0, answer -> 0, gender -> 0)
+C3 : W (id -> 4, partner = 0, ex -> 0, eyes -> 1, hair -> 0, pw -> 0, pb -> 0, answer -> 0, gender -> 0)
