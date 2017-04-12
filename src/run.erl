@@ -23,7 +23,7 @@ file(Fname) ->
     {ok, Binary} = file:read_file(Fname),
     string(binary_to_list(Binary)).
 
-%% my inspecting function
+
 view([Atom]) when is_atom(Atom) ->
     view(atom_to_list(Atom) ++ ".abc");
 view(Fname) ->
@@ -95,13 +95,13 @@ string(String) when is_list(String) ->
 init(SYS) ->
     init(SYS,[],[]).
 
-init([],PcList,ParList) ->
+init([],PcList,_ParList) ->
     Finished = "end System;\n\n",
     LineSep = io_lib:nl(),
     Pc = build_pc_list(PcList),
     Pchoice = build_choice_list(length(PcList)),
-    print(ParList),
-    Parchoice = build_par_list(ParList),
+    %print(ParList),
+    %Parchoice = build_par_list(ParList),
     Data = ets:lookup_element(system, data, 2),
     Temp1 = [proplists:get_keys(X) || X <- Data],
     Completeness = build_observation(length(PcList)),
@@ -285,7 +285,7 @@ eval({call, Name, Args}, State, Local = #state{entry = Evalue, recursive = Recur
     P = ets:lookup_element(State,visited,2),
     Exist = ets:lookup(procs_info,Name),
     %% Rec1 is to detech if there any recursive call to a process name , e.g., X = a.(b.X + X)
-    {Rec1, Reset,ExitPointId} =
+    {Rec1, _Reset,ExitPointId} =
 	case Exist of
 	    [] ->
 		if Recursive == false ->
@@ -313,12 +313,11 @@ eval({call, Name, Args}, State, Local = #state{entry = Evalue, recursive = Recur
     		  true ->
     		       Local#state{exit_point_id = ExitPointId,first_act=true,recursive = Rec1}
     	     end,
-    Rec = if Rec1 == true ->
-		  ets:lookup_element(procs_info, Name, 2);
-	     true -> {}
-	  end,
-    io:format("~n~n~n  ========= Make a call to ~p ~n with info ~p ~n",
-	      [Name,ets:tab2list(State)]),
+    %% _Rec = if Rec1 == true ->
+    %% 		  ets:lookup_element(procs_info, Name, 2);
+    %% 	     true -> {}
+    %% 	  end,
+    %io:format("~n~n~n  ========= Make a call to ~p ~n with info ~p ~n", [Name,ets:tab2list(State)]),
     NewBindings = if Args =/= [] -> filter_bindings(Args,Bindings); true -> [] end,
     %% New process shall not have v_name anymore, v_name is for input variable bindings
     ets:insert(State,{state,M#{parent => Visited,
@@ -633,7 +632,7 @@ eval({bang, {call,Name,_Args}=Body, Time}, State, Entry) ->
 		    put(ParvectorName,[TotalPar + Time + 1|ParVector]),
 		    put(parchoice_id,TotalPar + Time + 1)
 	    end,
-	    io:format("par vector ~p~n",[get(ParvectorName)]),
+	    %io:format("par vector ~p~n",[get(ParvectorName)]),
 	    eval(nil,State,Entry);
 	_ ->
 	    eval(Body, State, Local)
@@ -1048,7 +1047,7 @@ build_par_list(List) ->
     build_par_list(List,[]).
 
 build_par_list([],Acc) ->
-    io:format("PAR LIST ~p~n",[Acc]),
+    %io:format("PAR LIST ~p~n",[Acc]),
     "[" ++ string:join(Acc,",") ++ "]";
 build_par_list([H|T],Acc) ->
     String =
@@ -1160,7 +1159,7 @@ eval1(local,[{var,Name}], _, Vs, Bound,U) ->
 
 eval1(local,[H|T]=List,I,Vs,B,U) when T =/= [] ->
     S = [eval1(local,Name,I,Vs,B,U) || Name <- List],
-    io:format("S ~p~n",[S]),
+    %io:format("S ~p~n",[S]),
     "[" ++ string:join(S,",") ++ "]";
 
 eval1(local,{var,Name}, _, Vs,Bound,U) ->
