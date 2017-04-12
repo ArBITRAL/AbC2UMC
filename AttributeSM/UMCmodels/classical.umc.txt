@@ -1,0 +1,920 @@
+Class System with niceparallelism is
+Signals:
+	allowsend(i:int);
+        broadcast(tgt,msg,j:int);
+	start(inputids,inputprefs);
+Vars:
+	RANDOMQUEUE;
+	receiving:bool := false;
+	pc :int[];
+	bound : obj[];
+        total:int :=0;
+
+	-- attributes
+	id;
+	level;
+	partner;
+	prefs;
+State Top Defers allowsend(i)
+Transitions:
+
+init -> SYS { start(inputids,inputprefs) /
+	prefs := inputprefs;
+	id := inputids;
+
+	for i in 0..pc.length-1 {
+		self.allowsend(i);
+	}}
+
+
+ ---------- COMPONENT TEMPLATE Man ------------
+
+
+
+
+ ---------- COMPONENT TEMPLATE Woman ------------
+
+
+---------- COMPONENT C1 ------------
+----- Send -----
+SYS.C1.s0 -> C1.s0 {
+	allowsend(i)[receiving = false and i = 0 and pc[0][0] = 1]/
+	partner[0] := prefs[0].head;
+	prefs[0] := prefs[0].tail;
+        --total := total+level[0];
+        target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = partner[0]) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[propose,id[0]],0); OUT.sending(id[0],propose);
+		pc[0][0] = 2;
+	} else {
+		pc[0][0] = 3;
+		receiving=false;
+		self.allowsend(0);
+		bound[0][0] = 0;
+	}
+}
+SYS.C1.s0 -> C1.s0 {
+	broadcast(tgt,msg,j)[pc[0][0] = 2]/
+	receiving=false;
+	self.allowsend(0);
+	pc[0][0] = 3;
+	bound[0][0] = 0;
+}
+
+ ----- Receive -----
+SYS.C1.s0 -> C1.s0 {
+	broadcast(tgt,msg,j)[tgt[0] = 1 and (msg[0] = no) and pc[0][0] = 3]/
+	partner[0] := 0;
+        --total := total-level[0];
+        OUT.m_decrease;
+        level[0] := level[0]-1;
+	OUT.received(id[0],msg[0],msg[1]);
+	bound[0][0] = msg;
+	pc[0][0] = 1;bound[0][0]:= 0; -- not use these variables
+
+}
+
+---------- COMPONENT C2 ------------
+----- Send -----
+SYS.C2.s0 -> C2.s0 {
+	allowsend(i)[receiving = false and i = 1 and pc[1][0] = 1]/
+	partner[1] := prefs[1].head;
+	prefs[1] := prefs[1].tail;
+        --total := total+level[1];
+        target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = partner[1]) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[propose,id[1]],1); OUT.sending(id[1],propose);
+		pc[1][0] = 2;
+	} else {
+		pc[1][0] = 3;
+		receiving=false;
+		self.allowsend(1);
+		bound[1][0] = 0;
+	}
+}
+SYS.C2.s0 -> C2.s0 {
+	broadcast(tgt,msg,j)[pc[1][0] = 2]/
+	receiving=false;
+	self.allowsend(1);
+	pc[1][0] = 3;
+	bound[1][0] = 0;
+}
+
+ ----- Receive -----
+SYS.C2.s0 -> C2.s0 {
+	broadcast(tgt,msg,j)[tgt[1] = 1 and (msg[0] = no) and pc[1][0] = 3]/
+	partner[1] := 0;
+        --total := total-level[1];
+        OUT.m_decrease;
+        level[1] := level[1]-1;
+	OUT.received(id[1],msg[0],msg[1]);
+	bound[1][0] = msg;
+	pc[1][0] = 1;bound[1][0]:= 0; -- not use these variables
+
+}
+
+---------- COMPONENT C3 ------------
+----- Send -----
+SYS.C3.s0 -> C3.s0 {
+	allowsend(i)[receiving = false and i = 2 and pc[2][0] = 1]/
+	partner[2] := prefs[2].head;
+	prefs[2] := prefs[2].tail;
+        --total := total+level[2];
+        target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = partner[2]) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[propose,id[2]],2); OUT.sending(id[2],propose);
+		pc[2][0] = 2;
+	} else {
+		pc[2][0] = 3;
+		receiving=false;
+		self.allowsend(2);
+		bound[2][0] = 0;
+	}
+}
+SYS.C3.s0 -> C3.s0 {
+	broadcast(tgt,msg,j)[pc[2][0] = 2]/
+	receiving=false;
+	self.allowsend(2);
+	pc[2][0] = 3;
+	bound[2][0] = 0;
+}
+
+ ----- Receive -----
+SYS.C3.s0 -> C3.s0 {
+	broadcast(tgt,msg,j)[tgt[2] = 1 and (msg[0] = no) and pc[2][0] = 3]/
+	partner[2] := 0;
+        --total := total-level[2];
+        OUT.m_decrease;
+        level[2] := level[2]-1;
+	OUT.received(id[2],msg[0],msg[1]);
+	bound[2][0] = msg;
+	pc[2][0] = 1;bound[2][0]:= 0; -- not use these variables
+
+}
+
+---------- COMPONENT C4 ------------
+----- Receive -----
+SYS.C4.s0 -> C4.s0 {
+	broadcast(tgt,msg,j)[tgt[3] = 1 and (msg[0] = propose) and pc[3][0] = 1]/
+	OUT.received(id[3],msg[0],msg[1]);
+	bound[3][0] = msg;
+	pc[3][0] = 2;
+}
+
+ ----- Send -----
+SYS.C4.s0 -> C4.s0 {
+	allowsend(i)[receiving = false and i = 3 and (prefs[3][partner[3]] < prefs[3][bound[3][0][1]]) and pc[3][0] = 2]/
+	ex:int := partner[3];
+        partner[3] := bound[3][0][1];
+        if level[3] > prefs[3][partner[3]] then {OUT.w_decrease} else {OUT.w_increase};
+        --total := total-level[3];
+	level[3] := prefs[3][partner[3]];
+        --total := total+level[3];
+	target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = ex) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[no],3); OUT.sending(id[3],no);
+		pc[3][0] = 3;
+	} else {
+		pc[3][0] = 4;
+		receiving=false;
+		self.allowsend(3);
+
+	pc[3][0]:= 0; bound[3][0]:= 0; --not used these variables
+		}
+}
+SYS.C4.s0 -> C4.s0 {
+	broadcast(tgt,msg,j)[pc[3][0] = 3]/
+	receiving=false;
+	self.allowsend(3);
+        pc[3][0] = 4;
+
+	pc[3][0]:= 0; bound[3][0]:= 0; --not used these variables
+	}
+
+ ----- Send -----
+SYS.C4.s0 -> C4.s0 {
+	allowsend(i)[receiving = false and i = 3 and (prefs[3][partner[3]] > prefs[3][bound[3][0][1]]) and pc[3][0] = 2]/
+	target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = bound[3][0][1]) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[no],3); OUT.sending(id[3],no);
+		pc[3][0] = 5;
+	} else {
+		pc[3][0] = 6;
+		receiving=false;
+		self.allowsend(3);
+
+	pc[3][0]:= 0; bound[3][0]:= 0; --not used these variables
+		}
+}
+SYS.C4.s0 -> C4.s0 {
+	broadcast(tgt,msg,j)[pc[3][0] = 5]/
+	receiving=false;
+	self.allowsend(3);
+	pc[3][0] = 6;
+
+	pc[3][0]:= 0; bound[3][0]:= 0; --not used these variables
+	}
+
+ ----- Receive -----
+SYS.C4.s0 -> C4.s0 {
+	broadcast(tgt,msg,j)[tgt[3] = 1 and pc[3][0]!=1 and (msg[0] = propose) and pc[3][1] = 1]/
+	OUT.received(id[3],msg[0],msg[1]);
+	bound[3][1] = msg;
+	pc[3][1] = 2;
+}
+
+ ----- Send -----
+SYS.C4.s0 -> C4.s0 {
+	allowsend(i)[receiving = false and i = 3 and (prefs[3][partner[3]] < prefs[3][bound[3][1][1]]) and pc[3][1] = 2]/
+	ex:int := partner[3];
+        partner[3] := bound[3][1][1];
+        if level[3] > prefs[3][partner[3]] then {OUT.w_decrease} else {OUT.w_increase};
+	--total := total-level[3];
+	level[3] := prefs[3][partner[3]];
+	--total := total+level[3];
+	target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = ex) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[no],3); OUT.sending(id[3],no);
+		pc[3][1] = 3;
+	} else {
+		pc[3][1] = 4;
+		receiving=false;
+		self.allowsend(3);
+
+	pc[3][1]:= 0; bound[3][1]:= 0; --not used these variables
+		}
+}
+SYS.C4.s0 -> C4.s0 {
+	broadcast(tgt,msg,j)[pc[3][1] = 3]/
+	receiving=false;
+	self.allowsend(3);
+	pc[3][1] = 4;
+
+	pc[3][1]:= 0; bound[3][1]:= 0; --not used these variables
+	}
+
+ ----- Send -----
+SYS.C4.s0 -> C4.s0 {
+	allowsend(i)[receiving = false and i = 3 and (prefs[3][partner[3]] > prefs[3][bound[3][1][1]]) and pc[3][1] = 2]/
+	target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = bound[3][1][1]) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[no],3); OUT.sending(id[3],no);
+		pc[3][1] = 5;
+	} else {
+		pc[3][1] = 6;
+		receiving=false;
+		self.allowsend(3);
+
+	pc[3][1]:= 0; bound[3][1]:= 0; --not used these variables
+		}
+}
+SYS.C4.s0 -> C4.s0 {
+	broadcast(tgt,msg,j)[pc[3][1] = 5]/
+	receiving=false;
+	self.allowsend(3);
+	pc[3][1] = 6;
+
+	pc[3][1]:= 0; bound[3][1]:= 0; --not used these variables
+	}
+
+ ----- Receive -----
+SYS.C4.s0 -> C4.s0 {
+	broadcast(tgt,msg,j)[tgt[3] = 1 and pc[3][1]!=1 and pc[3][0]!=1 and (msg[0] = propose) and pc[3][2] = 1]/
+	OUT.received(id[3],msg[0],msg[1]);
+	bound[3][2] = msg;
+	pc[3][2] = 2;
+}
+
+ ----- Send -----
+SYS.C4.s0 -> C4.s0 {
+	allowsend(i)[receiving = false and i = 3 and (prefs[3][partner[3]] < prefs[3][bound[3][2][1]]) and pc[3][2] = 2]/
+	ex:int := partner[3];
+        partner[3] := bound[3][2][1];
+        if level[3] > prefs[3][partner[3]] then {OUT.w_decrease} else {OUT.w_increase};
+	--total := total-level[3];
+	level[3] := prefs[3][partner[3]];
+	--total := total+level[3];
+	target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = ex) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[no],3); OUT.sending(id[3],no);
+		pc[3][2] = 3;
+	} else {
+		pc[3][2] = 4;
+		receiving=false;
+		self.allowsend(3);
+
+	pc[3][2]:= 0; bound[3][2]:= 0; --not used these variables
+		}
+}
+SYS.C4.s0 -> C4.s0 {
+	broadcast(tgt,msg,j)[pc[3][2] = 3]/
+	receiving=false;
+	self.allowsend(3);
+	pc[3][2] = 4;
+
+	pc[3][2]:= 0; bound[3][2]:= 0; --not used these variables
+	}
+
+ ----- Send -----
+SYS.C4.s0 -> C4.s0 {
+	allowsend(i)[receiving = false and i = 3 and (prefs[3][partner[3]] > prefs[3][bound[3][2][1]]) and pc[3][2] = 2]/
+	target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = bound[3][2][1]) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[no],3); OUT.sending(id[3],no);
+		pc[3][2] = 5;
+	} else {
+		pc[3][2] = 6;
+		receiving=false;
+		self.allowsend(3);
+
+	pc[3][2]:= 0; bound[3][2]:= 0; --not used these variables
+		}
+}
+SYS.C4.s0 -> C4.s0 {
+	broadcast(tgt,msg,j)[pc[3][2] = 5]/
+	receiving=false;
+	self.allowsend(3);
+	pc[3][2] = 6;
+
+	pc[3][2]:= 0; bound[3][2]:= 0; --not used these variables
+	}
+
+---------- COMPONENT C5 ------------
+----- Receive -----
+SYS.C5.s0 -> C5.s0 {
+	broadcast(tgt,msg,j)[tgt[4] = 1 and (msg[0] = propose) and pc[4][0] = 1]/
+	OUT.received(id[4],msg[0],msg[1]);
+	bound[4][0] = msg;
+	pc[4][0] = 2;
+}
+
+ ----- Send -----
+SYS.C5.s0 -> C5.s0 {
+	allowsend(i)[receiving = false and i = 4 and (prefs[4][partner[4]] < prefs[4][bound[4][0][1]]) and pc[4][0] = 2]/
+	ex:int := partner[4];
+        partner[4] := bound[4][0][1];
+        if level[4] > prefs[4][partner[4]] then {OUT.w_decrease} else {OUT.w_increase};
+        --total := total-level[4];
+
+	level[4] := prefs[4][partner[4]];
+        --total := total+level[4];
+
+	target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = ex) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[no],4); OUT.sending(id[4],no);
+		pc[4][0] = 3;
+	} else {
+		pc[4][0] = 4;
+		receiving=false;
+		self.allowsend(4);
+
+	pc[4][0]:= 0; bound[4][0]:= 0; --not used these variables
+		}
+}
+SYS.C5.s0 -> C5.s0 {
+	broadcast(tgt,msg,j)[pc[4][0] = 3]/
+	receiving=false;
+	self.allowsend(4);
+	pc[4][0] = 4;
+
+	pc[4][0]:= 0; bound[4][0]:= 0; --not used these variables
+	}
+
+ ----- Send -----
+SYS.C5.s0 -> C5.s0 {
+	allowsend(i)[receiving = false and i = 4 and (prefs[4][partner[4]] > prefs[4][bound[4][0][1]]) and pc[4][0] = 2]/
+	target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = bound[4][0][1]) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[no],4); OUT.sending(id[4],no);
+		pc[4][0] = 5;
+	} else {
+		pc[4][0] = 6;
+		receiving=false;
+		self.allowsend(4);
+
+	pc[4][0]:= 0; bound[4][0]:= 0; --not used these variables
+		}
+}
+SYS.C5.s0 -> C5.s0 {
+	broadcast(tgt,msg,j)[pc[4][0] = 5]/
+	receiving=false;
+	self.allowsend(4);
+	pc[4][0] = 6;
+
+	pc[4][0]:= 0; bound[4][0]:= 0; --not used these variables
+	}
+
+ ----- Receive -----
+SYS.C5.s0 -> C5.s0 {
+	broadcast(tgt,msg,j)[tgt[4] = 1 and pc[4][0]!=1 and (msg[0] = propose) and pc[4][1] = 1]/
+	OUT.received(id[4],msg[0],msg[1]);
+	bound[4][1] = msg;
+	pc[4][1] = 2;
+}
+
+ ----- Send -----
+SYS.C5.s0 -> C5.s0 {
+	allowsend(i)[receiving = false and i = 4 and (prefs[4][partner[4]] < prefs[4][bound[4][1][1]]) and pc[4][1] = 2]/
+	ex:int := partner[4];
+        partner[4] := bound[4][1][1];
+        if level[4] > prefs[4][partner[4]] then {OUT.w_decrease} else {OUT.w_increase};
+	--total := total-level[4];
+	level[4] := prefs[4][partner[4]];
+	--total := total+level[4];
+	target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = ex) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[no],4); OUT.sending(id[4],no);
+		pc[4][1] = 3;
+	} else {
+		pc[4][1] = 4;
+		receiving=false;
+		self.allowsend(4);
+
+	pc[4][1]:= 0; bound[4][1]:= 0; --not used these variables
+		}
+}
+SYS.C5.s0 -> C5.s0 {
+	broadcast(tgt,msg,j)[pc[4][1] = 3]/
+	receiving=false;
+	self.allowsend(4);
+	pc[4][1] = 4;
+
+	pc[4][1]:= 0; bound[4][1]:= 0; --not used these variables
+	}
+
+ ----- Send -----
+SYS.C5.s0 -> C5.s0 {
+	allowsend(i)[receiving = false and i = 4 and (prefs[4][partner[4]] > prefs[4][bound[4][1][1]]) and pc[4][1] = 2]/
+	target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = bound[4][1][1]) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[no],4); OUT.sending(id[4],no);
+		pc[4][1] = 5;
+	} else {
+		pc[4][1] = 6;
+		receiving=false;
+		self.allowsend(4);
+
+	pc[4][1]:= 0; bound[4][1]:= 0; --not used these variables
+		}
+}
+SYS.C5.s0 -> C5.s0 {
+	broadcast(tgt,msg,j)[pc[4][1] = 5]/
+	receiving=false;
+	self.allowsend(4);
+	pc[4][1] = 6;
+
+	pc[4][1]:= 0; bound[4][1]:= 0; --not used these variables
+	}
+
+ ----- Receive -----
+SYS.C5.s0 -> C5.s0 {
+	broadcast(tgt,msg,j)[tgt[4] = 1 and pc[4][1]!=1 and pc[4][0]!=1 and (msg[0] = propose) and pc[4][2] = 1]/
+	OUT.received(id[4],msg[0],msg[1]);
+	bound[4][2] = msg;
+	pc[4][2] = 2;
+}
+
+ ----- Send -----
+SYS.C5.s0 -> C5.s0 {
+	allowsend(i)[receiving = false and i = 4 and (prefs[4][partner[4]] < prefs[4][bound[4][2][1]]) and pc[4][2] = 2]/
+	ex:int := partner[4];
+        partner[4] := bound[4][2][1];
+        if level[4] > prefs[4][partner[4]] then {OUT.w_decrease} else {OUT.w_increase};
+	--total := total-level[4];
+	level[4] := prefs[4][partner[4]];
+	--total := total+level[4];
+	target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = ex) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[no],4); OUT.sending(id[4],no);
+		pc[4][2] = 3;
+	} else {
+		pc[4][2] = 4;
+		receiving=false;
+		self.allowsend(4);
+
+	pc[4][2]:= 0; bound[4][2]:= 0; --not used these variables
+		}
+}
+SYS.C5.s0 -> C5.s0 {
+	broadcast(tgt,msg,j)[pc[4][2] = 3]/
+	receiving=false;
+	self.allowsend(4);
+	pc[4][2] = 4;
+
+	pc[4][2]:= 0; bound[4][2]:= 0; --not used these variables
+	}
+
+ ----- Send -----
+SYS.C5.s0 -> C5.s0 {
+	allowsend(i)[receiving = false and i = 4 and (prefs[4][partner[4]] > prefs[4][bound[4][2][1]]) and pc[4][2] = 2]/
+	target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = bound[4][2][1]) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[no],4); OUT.sending(id[4],no);
+		pc[4][2] = 5;
+	} else {
+		pc[4][2] = 6;
+		receiving=false;
+		self.allowsend(4);
+
+	pc[4][2]:= 0; bound[4][2]:= 0; --not used these variables
+		}
+}
+SYS.C5.s0 -> C5.s0 {
+	broadcast(tgt,msg,j)[pc[4][2] = 5]/
+	receiving=false;
+	self.allowsend(4);
+	pc[4][2] = 6;
+
+	pc[4][2]:= 0; bound[4][2]:= 0; --not used these variables
+	}
+
+---------- COMPONENT C6 ------------
+----- Receive -----
+SYS.C6.s0 -> C6.s0 {
+	broadcast(tgt,msg,j)[tgt[5] = 1 and (msg[0] = propose) and pc[5][0] = 1]/
+	OUT.received(id[5],msg[0],msg[1]);
+	bound[5][0] = msg;
+	pc[5][0] = 2;
+}
+
+ ----- Send -----
+SYS.C6.s0 -> C6.s0 {
+	allowsend(i)[receiving = false and i = 5 and (prefs[5][partner[5]] < prefs[5][bound[5][0][1]]) and pc[5][0] = 2]/
+	ex:int := partner[5];
+        partner[5] := bound[5][0][1];
+        if level[5] > prefs[5][partner[5]] then {OUT.w_decrease} else {OUT.w_increase};
+        --total := total-level[5];
+	level[5] := prefs[5][partner[5]];
+        --total := total+level[5];
+
+	target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = ex) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[no],5); OUT.sending(id[5],no);
+		pc[5][0] = 3;
+	} else {
+		pc[5][0] = 4;
+		receiving=false;
+		self.allowsend(5);
+
+	pc[5][0]:= 0; bound[5][0]:= 0; --not used these variables
+		}
+}
+SYS.C6.s0 -> C6.s0 {
+	broadcast(tgt,msg,j)[pc[5][0] = 3]/
+	receiving=false;
+	self.allowsend(5);
+	pc[5][0] = 4;
+
+	pc[5][0]:= 0; bound[5][0]:= 0; --not used these variables
+	}
+
+ ----- Send -----
+SYS.C6.s0 -> C6.s0 {
+	allowsend(i)[receiving = false and i = 5 and (prefs[5][partner[5]] > prefs[5][bound[5][0][1]]) and pc[5][0] = 2]/
+	target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = bound[5][0][1]) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[no],5); OUT.sending(id[5],no);
+		pc[5][0] = 5;
+	} else {
+		pc[5][0] = 6;
+		receiving=false;
+		self.allowsend(5);
+
+	pc[5][0]:= 0; bound[5][0]:= 0; --not used these variables
+		}
+}
+SYS.C6.s0 -> C6.s0 {
+	broadcast(tgt,msg,j)[pc[5][0] = 5]/
+	receiving=false;
+	self.allowsend(5);
+	pc[5][0] = 6;
+
+	pc[5][0]:= 0; bound[5][0]:= 0; --not used these variables
+	}
+
+ ----- Receive -----
+SYS.C6.s0 -> C6.s0 {
+	broadcast(tgt,msg,j)[tgt[5] = 1 and pc[5][0]!=1 and (msg[0] = propose) and pc[5][1] = 1]/
+	OUT.received(id[5],msg[0],msg[1]);
+	bound[5][1] = msg;
+	pc[5][1] = 2;
+}
+
+ ----- Send -----
+SYS.C6.s0 -> C6.s0 {
+	allowsend(i)[receiving = false and i = 5 and (prefs[5][partner[5]] < prefs[5][bound[5][1][1]]) and pc[5][1] = 2]/
+	ex:int := partner[5];
+        partner[5] := bound[5][1][1];
+        if level[5] > prefs[5][partner[5]] then {OUT.w_decrease} else {OUT.w_increase};
+	--total := total-level[5];
+	level[5] := prefs[5][partner[5]];
+	--total := total+level[5];
+	target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = ex) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[no],5); OUT.sending(id[5],no);
+		pc[5][1] = 3;
+	} else {
+		pc[5][1] = 4;
+		receiving=false;
+		self.allowsend(5);
+
+	pc[5][1]:= 0; bound[5][1]:= 0; --not used these variables
+		}
+}
+SYS.C6.s0 -> C6.s0 {
+	broadcast(tgt,msg,j)[pc[5][1] = 3]/
+	receiving=false;
+	self.allowsend(5);
+	pc[5][1] = 4;
+
+	pc[5][1]:= 0; bound[5][1]:= 0; --not used these variables
+	}
+
+ ----- Send -----
+SYS.C6.s0 -> C6.s0 {
+	allowsend(i)[receiving = false and i = 5 and (prefs[5][partner[5]] > prefs[5][bound[5][1][1]]) and pc[5][1] = 2]/
+	target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = bound[5][1][1]) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[no],5); OUT.sending(id[5],no);
+		pc[5][1] = 5;
+	} else {
+		pc[5][1] = 6;
+		receiving=false;
+		self.allowsend(5);
+
+	pc[5][1]:= 0; bound[5][1]:= 0; --not used these variables
+		}
+}
+SYS.C6.s0 -> C6.s0 {
+	broadcast(tgt,msg,j)[pc[5][1] = 5]/
+	receiving=false;
+	self.allowsend(5);
+	pc[5][1] = 6;
+
+	pc[5][1]:= 0; bound[5][1]:= 0; --not used these variables
+	}
+
+ ----- Receive -----
+SYS.C6.s0 -> C6.s0 {
+	broadcast(tgt,msg,j)[tgt[5] = 1 and pc[5][1]!=1 and pc[5][0]!=1 and (msg[0] = propose) and pc[5][2] = 1]/
+	OUT.received(id[5],msg[0],msg[1]);
+	bound[5][2] = msg;
+	pc[5][2] = 2;
+}
+
+ ----- Send -----
+SYS.C6.s0 -> C6.s0 {
+	allowsend(i)[receiving = false and i = 5 and (prefs[5][partner[5]] < prefs[5][bound[5][2][1]]) and pc[5][2] = 2]/
+	ex:int := partner[5];
+        partner[5] := bound[5][2][1];
+        if level[5] > prefs[5][partner[5]] then {OUT.w_decrease} else {OUT.w_increase};
+	--total := total-level[5];
+	level[5] := prefs[5][partner[5]];
+	--total := total+level[5];
+	target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = ex) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[no],5); OUT.sending(id[5],no);
+		pc[5][2] = 3;
+	} else {
+		pc[5][2] = 4;
+		receiving=false;
+		self.allowsend(5);
+
+	pc[5][2]:= 0; bound[5][2]:= 0; --not used these variables
+		}
+}
+SYS.C6.s0 -> C6.s0 {
+	broadcast(tgt,msg,j)[pc[5][2] = 3]/
+	receiving=false;
+	self.allowsend(5);
+	pc[5][2] = 4;
+
+	pc[5][2]:= 0; bound[5][2]:= 0; --not used these variables
+	}
+
+ ----- Send -----
+SYS.C6.s0 -> C6.s0 {
+	allowsend(i)[receiving = false and i = 5 and (prefs[5][partner[5]] > prefs[5][bound[5][2][1]]) and pc[5][2] = 2]/
+	target:int[];
+	for j in 0..pc.length-1 {
+		if (id[j] = bound[5][2][1]) then
+			{target[j] := 1
+	} else {target[j]:=0;}
+	};
+	receiving=true;
+	if target.length > 0 then {
+		self.broadcast(target,[no],5); OUT.sending(id[5],no);
+		pc[5][2] = 5;
+	} else {
+		pc[5][2] = 6;
+		receiving=false;
+		self.allowsend(5);
+
+	pc[5][2]:= 0; bound[5][2]:= 0; --not used these variables
+		}
+}
+SYS.C6.s0 -> C6.s0 {
+	broadcast(tgt,msg,j)[pc[5][2] = 5]/
+	receiving=false;
+	self.allowsend(5);
+	pc[5][2] = 6;
+
+	pc[5][2]:= 0; bound[5][2]:= 0; --not used these variables
+	}
+
+end System;
+
+------------------------------------------------------------
+------------------------------------------------------------
+Class Inputgen is
+Vars
+  ids :=[1,2,3,4,5,6];
+  prefs := []
+Transitions
+  C0.p4.s0 -> C0.p4.final {-/prefs[0] := prefs[0] +[4]}
+  C0.p5.s0 -> C0.p5.final {-/prefs[0] := prefs[0] +[5]}
+  C0.p6.s0 -> C0.p6.final {-/prefs[0] := prefs[0] +[6]}
+  C0 -> C1
+  --
+  C1.p4.s0 -> C1.p4.final {-/prefs[1] := prefs[1] +[4]}
+  C1.p5.s0 -> C1.p5.final {-/prefs[1] := prefs[1] +[5]}
+  C1.p6.s0 -> C1.p6.final {-/prefs[1] := prefs[1] +[6]}
+  C1 -> C2
+  --
+  C2.p4.s0 -> C2.p4.final {-/prefs[2] := prefs[2] +[4]}
+  C2.p5.s0 -> C2.p5.final {-/prefs[2] := prefs[2] +[5]}
+  C2.p6.s0 -> C2.p6.final {-/prefs[2] := prefs[2] +[6]}
+  C2 -> C3
+  --
+  C3.p1.s0 -> C3.p1.final {-/prefs[3] := prefs[3] +[1]}
+  C3.p2.s0 -> C3.p2.final {-/prefs[3] := prefs[3] +[2]}
+  C3.p3.s0 -> C3.p3.final {-/prefs[3] := prefs[3] +[3]}
+  C3 -> C4
+  --
+  C4.p1.s0 -> C4.p1.final {-/prefs[4] := prefs[4] +[1]}
+  C4.p2.s0 -> C4.p2.final {-/prefs[4] := prefs[4] +[2]}
+  C4.p3.s0 -> C4.p3.final {-/prefs[4] := prefs[4] +[3]}
+  C4 -> C5
+  --
+  C5.p1.s0 -> C5.p1.final {-/prefs[5] := prefs[5] +[1]}
+  C5.p2.s0 -> C5.p2.final {-/prefs[5] := prefs[5] +[2]}
+  C5.p3.s0 -> C5.p3.final {-/prefs[5] := prefs[5] +[3]}
+  C5 -> C6 {-/	prefs[3] := [0] + prefs[3];
+		prefs[4] := [0] + prefs[4];
+		prefs[5] := [0] + prefs[5];}
+
+  C6 -> C7 {- [prefs[0][0]*100 + prefs[0][1]*10+prefs[0][2]
+                <= prefs[1][0]*100 + prefs[1][1]*10+prefs[1][2]
+                and
+               prefs[1][0]*100 + prefs[1][1]*10+prefs[1][2]
+                <= prefs[2][0]*100 + prefs[2][1]*10+prefs[2][2]
+                and
+               prefs[3][1]*100 + prefs[3][2]*10+prefs[3][3]
+                <= prefs[4][1]*100 + prefs[4][2]*10+prefs[4][3]
+                and
+               prefs[4][1]*100 + prefs[4][2]*10+prefs[4][3]
+                <= prefs[5][1]*100 + prefs[5][2]*10+prefs[5][3]
+              ] / OO.start(ids,prefs)}
+end Inputgen;
+
+Driver: Inputgen;
+
+OO : System (partner -> [0,0,0,0,0,0], level -> [3,3,3,0,0,0], pc => [[1],[1],[1],[1,1,1],[1,1,1],[1,1,1]]);
+Abstractions {
+    State OO.partner=$v and $v[0]= $2 and OO.id[0]!=0 and OO.id[0]=$1 ->  haspartner($1,$2)
+    State OO.partner=$v and $v[1]= $2 and OO.id[1]!=0 and OO.id[1]=$1 ->  haspartner($1,$2)
+    State OO.partner=$v and $v[2]= $2 and OO.id[2]!=0 and OO.id[2]=$1 ->  haspartner($1,$2)
+    State OO.partner=$v and $v[3]= $2 and OO.id[3]!=0 and OO.id[3]=$1 ->  haspartner($1,$2)
+    State OO.partner=$v and $v[4]= $2 and OO.id[4]!=0 and OO.id[4]=$1 ->  haspartner($1,$2)
+    State OO.partner=$v and $v[5]= $2 and OO.id[5]!=0 and OO.id[5]=$1 ->  haspartner($1,$2)
+    State OO.partner=$1 -> matched($1)
+    Action start($1,$2) -> start
+    Action m_decrease -> m_decreased
+    Action w_decrease -> w_decreased
+    Action m_increase -> m_increased
+    Action w_increase -> w_increased
+    Action sending($1,$2) -> send($1,$2)
+    Action received($1,$2,$3) -> received($1,$2,$3)
+}
+
+no, propose : Token;

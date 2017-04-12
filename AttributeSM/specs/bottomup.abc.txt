@@ -2,7 +2,7 @@
 -- Men first proose with one preference, then increases to two preferences
 
 component M
- attributes: id, partner, wealth, body, pe, ph, ce, ch, msgqueue
+ attributes: id, partner, wealth, body, pe, ph, ce, ch, gender, msgqueue
  behaviour:
    let {
      Man :=   WAIT_REPLIES | HANDLE_PROPOSALS
@@ -11,11 +11,11 @@ component M
      RECEIVE(x,y,z,t) := ([this.msgqueue := this.msgqueue+[[$x,$y,$z,$t]]]($msg = _yes)($msg,$id,$eyes,$hair).RECEIVE($msg,$id,$eyes,$hair))
      		      +
 			([this.msgqueue := this.msgqueue+[[$x,$y,$z,$t]]]()@(ff).WAIT_REPLIES)
-
-     HANDLE_PROPOSALS :=
      --  initially this.partner = 0
      --  start with proposing with low expectations (eyes matching)
      --  (no _bye msg can arrive at this time)
+
+     HANDLE_PROPOSALS :=
        (_propose,this.id,this.wealth,this.body)@(eyes = this.pe).HANDLE_FIRST_REPLIES
 
      HANDLE_FIRST_REPLIES :=
@@ -43,13 +43,13 @@ component M
          -- if abandoned by current partner, and empty queue restart with low expectations
               (<this.msgqueue = []>
                 [$ex := this.partner, this.partner := 0, this.ce := 0, this.ch := 0]($msg = _bye and $id=$ex)($msg,$id).
-              (_propose, this.id,this.wealth,this.body)@(eyes = this.pe).
-                 HANDLE_FIRST_REPLIES)
+              HANDLE_PROPOSALS)
 		            +
           -- if empty queue but not best make better proposal
            (<this.msgqueue = [] and this.partner <> 0 and this.ch <> this.ph>
               (_propose,this.id,this.wealth,this.body)@(eyes = this.pe and hair = this.ph).
                  HANDLE_SECOND_REPLIES)
+
 
      HANDLE_SECOND_REPLIES :=
       -- accept current partner (just swapped, is surely the best)
@@ -74,14 +74,14 @@ component M
            --   restart with low expectations
             (<this.msgqueue <> []>[$ex:=this.partner,this.partner := 0, this.ce := 0, this.ch := 0]($msg = _bye and $id= $ex)($msg,$id).HANDLE_FIRST_REPLIES)
            +
-           (<this.msgqueue = []>($msg = _bye and $id=this.partner)($msg,$id).
-              [this.partner := 0,this.ce := 0,this.ch := 0](_propose, this.id,this.wealth,this.body)@(eyes = this.pe).HANDLE_FIRST_REPLIES)
+           (<this.msgqueue = []>[$ex:=this.partner,this.partner := 0,this.ce := 0,this.ch := 0]($msg = _bye and $id=$ex)($msg,$id).
+              HANDLE_PROPOSALS)
    }
    in Man
 end
 
 component W
- attributes: id, partner, eyes, hair, pw, pb, cw, cb,  msgqueue
+ attributes: id, partner, eyes, hair, pw, pb, cw, cb,  gender, msgqueue
  behaviour:
    let {
      Woman := WAIT_PROPOSALS | HANDLE_PROPOSALS
@@ -132,8 +132,8 @@ component W
                )
 	       )
 	    +
-	    -- if the new man is not better, discard the message
-	   <this.msgqueue <> [] and this.partner <> 0 and
+	    -- if the new man is not better, discard message
+	   (<this.msgqueue <> [] and this.partner <> 0 and
                (
                  ( this.cw = this.pw and this.msgqueue.head[2] <> this.pw)
                  or
@@ -142,7 +142,8 @@ component W
                    this.cb = this.pb)
 	 	or (this.cw = this.msgqueue.head[2] and this.cb = this.msgqueue.head[3])
 	       )
-	     >[this.msgqueue := this.msgqueue.tail]()@(ff).HANDLE_PROPOSALS
+	     >
+	     [this.msgqueue := this.msgqueue.tail]()@(ff).HANDLE_PROPOSALS)
           +
 	      -- abandoned by current partner, reset status and continute
              ([$ex := this.partner, this.partner := 0,this.cw := 0,this.cb := 0]
@@ -159,9 +160,9 @@ end
 
 -- cycling in preference lists leads to infinite loops in the model
 
-C0 : M (id -> 1, partner = 0, wealth -> 1, body -> 1, pe -> 1, ph -> 1, msgqueue -> [])
-C1 : M (id -> 2, partner = 0, wealth -> 0, body -> 1, pe -> 1, ph -> 0, msgqueue -> [])
+C0 : M (id -> 1, partner = 0, wealth -> 1, body -> 1, pe -> 1, ph -> 1, gender -> 1, msgqueue -> [])
+C1 : M (id -> 2, partner = 0, wealth -> 0, body -> 1, pe -> 0, ph -> 0, gender -> 1,msgqueue -> [])
 
 
-C2 : W (id -> 3, partner = 0, eyes -> 1, hair -> 1, pw -> 0, pb -> 1, msgqueue -> [])
-C3 : W (id -> 4, partner = 0, eyes -> 1, hair -> 0, pw -> 1, pb -> 1, msgqueue -> [])
+C2 : W (id -> 3, partner = 0, eyes -> 1, hair -> 1, pw -> 0, pb -> 1, gender -> 0, msgqueue -> [])
+C3 : W (id -> 4, partner = 0, eyes -> 0, hair -> 0, pw -> 1, pb -> 1, gender -> 0, msgqueue -> [])
