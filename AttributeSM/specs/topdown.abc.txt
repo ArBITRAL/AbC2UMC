@@ -1,30 +1,28 @@
--- Attribute Stable Marriage specification in AbC - topdown approach
--- There two set of men and women, each is associated with characteristics and preferences on partner's characteristcis
--- Find a one-to-one matching such that the matching is stable (according to weak stability)
+-- Attribute SM - topdown
 
 component M
-  attributes: id, partner, wealth, body, pe, ph, bl, propose, gender
+  attributes: id, partner, wealth, body, pe, ph, bl, proposed, gender
   behaviour:
 	let {
 	  Man := PROPOSE |  WAIT |  YES
 
 	  -- propose with gradually relaxing requirement, using Pi?P1_P2
 	  -- PROPOSE is active if a single man has not yet sent proposal
-	  PROPOSE := <this.partner = 0 and this.propose = 0>[this.propose := 1]
+	  PROPOSE := <this.partner = 0 and this.proposed = 0>[this.proposed := 1]
 	             ((eyes = this.pe and hair = this.ph and id notin this.bl)?
 		      (_propose,this.id,this.wealth,this.body)@(eyes = this.pe and hair = this.ph and id notin this.bl).PROPOSE 		      -- propose to pe,ph
 	    	       _
 		       ((eyes = this.pe and id notin this.bl)?(_propose,this.id,this.wealth,this.body)@(eyes = this.pe and id notin this.bl).PROPOSE  -- propose to pe
 		        _
-		        ((gender = 0 and id notin this.bl)?(_propose,this.id,this.wealth,this.body)@(gender = 0 and id notin this.bl).PROPOSE _ nil)  -- propose to all women
+			(_propose,this.id,this.wealth,this.body)@(gender = 0 and id notin this.bl).PROPOSE -- keep proposing
 		       )
 		     )
 
          -- in cases of receiving no and bye messages
 	 WAIT := LOOP |^1 WAIT
-         LOOP:= ([this.partner := 0, this.propose := 0]($msg = _bye)($msg,$id).LOOP)
+         LOOP:= ([this.partner := 0, this.proposed := 0]($msg = _bye)($msg,$id).LOOP)
 	 	     +
-		(($msg = _no)($msg,$id).[this.propose:= 0,this.bl := this.bl + [$id]]()@(ff).LOOP)
+		(($msg = _no)($msg,$id).[this.proposed:= 0,this.bl := this.bl + [$id]]()@(ff).LOOP)
 
          -- in cases of receiving yes(s), either says toolate or becomes engaged
 	 YES := LOOP1 |^1 YES
@@ -85,13 +83,9 @@ end
    -- wealth rich/poor 1/0
    -- body strong/weak 1/0
 
--- softsem data
-C0 : M (id -> 1, partner = 0, wealth -> 1, body -> 1, pe -> 1, ph -> 1, propose -> 0, gender -> 1)
-C1 : M (id -> 2, partner = 0, wealth -> 1, body -> 0, pe -> 0, ph -> 0, propose -> 0, gender -> 1)
---C2 : M (id -> 3, partner = 0, wealth -> 0, body -> 1, pe -> 0, ph -> 1, propose -> 0, gender -> 1)
---C3 : M (id -> 4, partner = 0, wealth -> 0, body -> 0, pe -> 1, ph -> 1, propose -> 0, gender -> 1)
+-- 2x2
+C0 : M (id -> 1, partner = 0, wealth -> 0, body -> 0, pe -> 0, ph -> 0, proposed -> 0, gender -> 1)
+C1 : M (id -> 2, partner = 0, wealth -> 0, body -> 0, pe -> 0, ph -> 0, proposed -> 0, gender -> 1)
 
-C4 : W (id -> 5, partner = 0, ex -> 0, eyes -> 1, hair -> 1, pw -> 0, pb -> 0, answer -> 0, gender -> 0)
-C5 : W (id -> 6, partner = 0, ex -> 0, eyes -> 1, hair -> 0, pw -> 1, pb -> 1, answer -> 0, gender -> 0)
---C6 : W (id -> 7, partner = 0, ex -> 0, eyes -> 0, hair -> 1, pw -> 1, pb -> 1, answer -> 0, gender -> 0)
---C7 : W (id -> 8, partner = 0, ex -> 0, eyes -> 0, hair -> 0, pw -> 1, pb -> 0, answer -> 0, gender -> 0)
+C2 : W (id -> 3, partner = 0, ex -> 0, eyes -> 0, hair -> 0, pw -> 0, pb -> 0, answer -> 0, gender -> 0)
+C3 : W (id -> 4, partner = 0, ex -> 0, eyes -> 1, hair -> 0, pw -> 0, pb -> 0, answer -> 0, gender -> 0)
