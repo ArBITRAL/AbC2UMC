@@ -1,0 +1,137 @@
+------------------------------------------
+      PROPERTIES FOR CLASSICAL
+       ALL-INPUTS   REDUCED   MODEL
+      
+  (for specific input properties remove the
+"A[true {not start} W {start}" prefix and trailing "]" 
+------------------------------------------    
+
+
+---------------------------------------------
+------The system converges to final states  STABILITY
+F1.   
+A[{not start} W {start} AF FINAL]
+
+(before reduction)
+the following is not wrong but less precise in the reduced version.
+F1. AF FINAL
+The Formula: "AF FINAL"
+is: TRUE
+(states generated= 4873477, computations fragments generated= , evaluation time= 370 sec.)
+
+(after reduction)
+The Formula: "A[true {not start} W {start} AF FINAL]"
+is: TRUE 
+(states generated= 488773, computations fragments generated= 977546, evaluation time= 39.193 sec.)
+
+
+---------------------------------------------
+--The matchings are unique?   3x3  UNIQUENESS  (notice FIXED PARANTHESIS - now)
+F2a'.  
+A[{not start} W {start}
+   AF ( ((EF (FINAL and haspartner(1,4))) implies AF (FINAL and haspartner(1,4))) 
+      and
+     ((EF (FINAL and haspartner(1,5))) implies AF (FINAL and haspartner(1,5))) 
+      and
+     ((EF (FINAL and haspartner(1,6))) implies AF (FINAL and haspartner(1,6))) 
+    ) 
+  ]
+
+(after reduction)
+The Formula: "A[true {not start} W {start} (EF (FINAL and haspartner(1,4))) implies ((AF (FINAL and haspartner(1,4))) and ((EF (FINAL and haspartner(1,5))) implies ((AF (FINAL and haspartner(1,5))) and ((EF (FINAL and haspartner(1,6))) implies AF (FINAL and haspartner(1,6))))))]"
+is: TRUE 
+(states generated= 488773, computations fragments generated= 2794254, evaluation time= 53.847 sec.)
+---------------------------------------------
+--- every components have partner in final states NOTSINGLE
+F2b. 
+A[{not start} W {start} AF (FINAL and not haspartner(*,0))]
+
+(after reduction)
+The Formula: "A[true {not start} W {start} AF (FINAL and not hasparter(*,0))]"
+is: TRUE 
+(states generated= 488773, computations fragments generated= 1360618, evaluation time= 40.795 sec.)
+
+— variant
+A[true {not start} W {start} AG (FINAL implies not haspartner(*,0))]
+
+The Formula: "A[true {not start} W {start} AG (FINAL implies not haspartner(*,0))]"
+is: TRUE 
+(states generated= 488773, computations fragments generated= 1360618, evaluation time= 41.369 sec.)
+
+
+
+---------------------------------------------
+--The matchings are symmatric?    SYMMETRY  (notice FIXED PARENTHESIS)
+F2c
+A[{not start} W {start} 
+    AG (FINAL implies ( (haspartner(1,4) implies haspartner(4,1)) and 
+                        (haspartner(1,5) implies haspartner(5,1))and 
+                        (haspartner(1,6) implies haspartner(6,1))
+                      )
+       )
+ ]
+ 
+(after reduction)
+The Formula: "A[true {not start} W {start} AG (FINAL implies ((haspartner(1,4) implies haspartner(4,1)) and ((haspartner(1,5) implies haspartner(5,1)) and (haspartner(1,6) implies haspartner(6,1)))))]"
+is: TRUE 
+(states generated= 488773, computations fragments generated= 1382570, evaluation time= 40.679 sec.)
+
+---------------------------------------------
+-- men never give up      LIVENESS
+F3. 
+AG (([received($1,no,∗)] AF {send(%1, propose)} true))
+
+(after reduction)
+The Formula: "AG [received($1,no,?,?,?)] AF {send(%1,propose)} true"
+is: TRUE 
+(states generated= 488773, computations fragments generated= 977546, evaluation time= 33.638 sec.)
+
+---------------------------------------------
+--The satisfaction level of women always increases
+F4. 
+A[{not w_decr} U FINAL]
+
+(before reduction)
+The Formula: "A[true {not w_decr} U FINAL]"
+is: TRUE
+(states generated= 4873477, computations fragments generated= 14573775, evaluation time= 506.007 sec.)
+
+(after reduction)
+The Formula: "A[true {not start} W {start} A[true {not w_decreased} U FINAL]]"
+is: TRUE 
+(states generated= 488773, computations fragments generated= 1351210, evaluation time= 41.861 sec.)
+
+---------------------------------------------
+--The satisfaction level of men always increases
+F5. 
+A[{not m_decr} U FINAL]
+
+The Formula: "A[true {not m_decr} U FINAL]"
+is: FALSE
+(states generated= 485228, computations fragments generated= 1175747, evaluation time= 24.937 sec.)
+
+(after reduction)
+The Formula: "A[true {not start} W {start} A[true {not m_decreased} U FINAL]]"
+is: FALSE 
+(states generated= 165291, computations fragments generated= 327451, evaluation time= 6.902 sec.)
+
+---------------------------------------------
+
+
+
+IF DESIRED, WE CAN ADD THE FOLLOWING (TO BE VERIFIED)
+
+---------------------------------------------
+---After sending a proposal a man does not send further proposals until he receives a no or a yes
+F9a. 
+AG [send($1,propose)] A[ {not send(%1,propose)} W {received(%1,no,*) or received(%1,yes,*)}]
+
+
+---------------------------------------------
+---After sending a proposal a man will receive a no or a yes (TO BE VERIFIED)
+F10. 
+AG [send($1,propose)] AF {received(%1,no,*) or received(%1,yes,*)}]
+
+
+---------------------------------------------
+
