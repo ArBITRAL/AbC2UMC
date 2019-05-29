@@ -1,5 +1,5 @@
 all:
-	escript run.erl build
+	escript abc2umc.erl build
 	erl -make
 
 clean:
